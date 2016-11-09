@@ -1,129 +1,109 @@
 package com.ducko2800.voxengine;
 
-import com.badlogic.gdx.ApplicationAdapter;
+import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShaderProgram;
-import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.ducko2800.voxengine.chunk.Chunk;
+import com.badlogic.gdx.graphics.VertexAttributes;
+import com.badlogic.gdx.graphics.g3d.Environment;
+import com.badlogic.gdx.graphics.g3d.Material;
+import com.badlogic.gdx.graphics.g3d.Model;
+import com.badlogic.gdx.graphics.g3d.ModelBatch;
+import com.badlogic.gdx.graphics.g3d.ModelInstance;
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.attributes.FloatAttribute;
+import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
+import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
+import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
+import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 
-public class voxengine extends ApplicationAdapter implements InputProcessor {
+import java.util.ArrayList;
+import java.util.Random;
 
+public class voxengine implements ApplicationListener {
+
+    Texture brick, sand;
+    private Environment env;
     private PerspectiveCamera camera;
+    private Model brickBlock, sandBlock;
+    private ModelBatch batch;
+    private ModelInstance instance;
+    private ArrayList<ModelInstance> instances;
+    private CameraInputController input;
+    private Random rand;
 
-    private static String getShader(String path) {
-        return Gdx.files.local(path).readString();
-    }
-
-    protected static ShaderProgram createMeshShader() {
-        ShaderProgram.pedantic = false;
-        ShaderProgram shader = new ShaderProgram(getShader("VertShader.glsl"), getShader("FragShader.glsl"));
-
-        String log = shader.getLog();
-
-        if (!shader.isCompiled()) {
-            throw new GdxRuntimeException(log);
-        }
-        if (log != null && log.length() != 0) {
-            System.out.println("Shader Log: "+log);
-        }
-
-        return shader;
-    }
-
-    ShaderProgram shader;
-    private Chunk chunk;
-
-    @Override
     public void create () {
-        Gdx.input.setInputProcessor(this);
-        shader = createMeshShader();
-        camera = new PerspectiveCamera(75f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        camera.position.set(-3f, 2f, -3f);
-        camera.lookAt(0f, 0f, 0f);
-        camera.near = 0;
-        camera.far = 100;
+        brick = new Texture(Gdx.files.internal("brick.png"));
+        sand = new Texture(Gdx.files.internal("sand.png"));
 
-        chunk = new Chunk();
+        rand = new Random();
+        instances = new ArrayList<>();
+        batch = new ModelBatch();
+
+        camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera.position.set(10f, 10f, 10f);
+        camera.lookAt(0, 0, 0);
+        camera.near = 1;
+        camera.far = 1000;
+        camera.update();
+
+        input = new CameraInputController(camera);
+        Gdx.input.setInputProcessor(input);
+
+        env = new Environment();
+        env.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1.f));
+        env.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
+
+        ModelBuilder modelBuilder = new ModelBuilder();
+        brickBlock = modelBuilder.createBox(1f, 1f, 1f, new Material(TextureAttribute.createDiffuse(brick),
+                ColorAttribute.createSpecular(1, 1, 1, 1), FloatAttribute.createShininess(8f)),
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal | VertexAttributes.Usage.TextureCoordinates);
+        sandBlock = modelBuilder.createBox(1f, 1f, 1f, new Material(TextureAttribute.createDiffuse(sand),
+                ColorAttribute.createSpecular(1, 1, 1, 1), FloatAttribute.createShininess(8f)),
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal | VertexAttributes.Usage.TextureCoordinates);
+
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < 16; y++) {
+                for (int z = 0; z < 16; z++) {
+                    if (x*x + y*y + z*z > 16*16) {
+                        continue;
+                    }
+
+                    instance = new ModelInstance(rand.nextBoolean() ? brickBlock : sandBlock);
+                    instance.transform.translate(x, y, z);
+                    instances.add(instance);
+                }
+            }
+        }
     }
 
     @Override
+    public void resize(int width, int height) {
+
+    }
+
     public void render () {
-        Gdx.gl.glClearColor( 0, 0, 0, 1 ); // sets clear colour to black
         Gdx.gl.glClear( GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT ); // clears display window
-        Gdx.gl.glEnable(GL20.GL_BLEND); // enable and setup blending
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-        Gdx.gl.glEnable(GL20.GL_CULL_FACE); // enable culling (i.e. not drawing faces that can't see)
-        Gdx.gl.glCullFace(GL20.GL_BACK);
 
-        camera.update();
-
-        shader.begin();
-
-        shader.setUniformMatrix("u_projTrans", camera.combined);
-
-        chunk.mesh.render(shader, GL20.GL_TRIANGLES, 0, chunk.vertexCount);
-
-        shader.end();
-    }
-
-    /* Camera Stuff */
-    @Override
-    public boolean keyDown(int keycode) {
-        return false;
+        input.update();
+        batch.begin(camera);
+        batch.render(instances, env);
+        batch.end();
     }
 
     @Override
-    public boolean keyUp(int keycode) {
-        return false;
+    public void pause() {
+
     }
 
     @Override
-    public boolean keyTyped(char character) {
-        return false;
-    }
+    public void resume() {
 
-    private int dragX, dragY;
-
-    @Override
-    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        dragX = screenX;
-        dragY = screenY;
-        return true;
     }
 
     @Override
-    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-        return false;
+    public void dispose() {
+
     }
-
-    @Override
-    public boolean touchDragged(int screenX, int screenY, int pointer) {
-        float dX = (float)(screenX - dragX) / (float)Gdx.graphics.getWidth();
-        float dY = (float)(dragY - screenY) / (float)Gdx.graphics.getHeight();
-        dragX = screenX;
-        dragY = screenY;
-        camera.position.add(dX * 10f, dY * 10f, 0f);
-        camera.update();
-        return true;
-    }
-
-    @Override
-    public boolean mouseMoved(int screenX, int screenY) {
-        return false;
-    }
-
-    @Override
-    public boolean scrolled(int amount) {
-        return false;
-    }
-
-
-
-
 }
