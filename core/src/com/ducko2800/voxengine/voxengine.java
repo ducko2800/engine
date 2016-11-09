@@ -54,6 +54,8 @@ public class voxengine extends ApplicationAdapter implements InputProcessor {
 
     @Override
     public void render () {
+        Gdx.gl.glClearColor( 0, 0, 0, 1 ); // sets clear colour to black
+        Gdx.gl.glClear( GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT ); // clears display window
         Gdx.gl.glEnable(GL20.GL_BLEND); // enable and setup blending
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         Gdx.gl.glEnable(GL20.GL_CULL_FACE); // enable culling (i.e. not drawing faces that can't see)
