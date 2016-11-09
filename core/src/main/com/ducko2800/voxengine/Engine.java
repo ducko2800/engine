@@ -21,7 +21,7 @@ import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import java.util.ArrayList;
 import java.util.Random;
 
-public class voxengine implements ApplicationListener {
+public class Engine implements ApplicationListener {
 
     Texture brick, sand;
     private Environment env;
