@@ -34,8 +34,12 @@ public class Engine implements ApplicationListener {
     private Random rand;
 
     public void create () {
-        brick = new Texture(Gdx.files.internal("brick.png"));
-        sand = new Texture(Gdx.files.internal("sand.png"));
+        brick = new Texture(Gdx.files.internal("brick.png"), true);
+        sand = new Texture(Gdx.files.internal("sand.png"), true);
+
+        // trilinear filtering
+        brick.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
+        sand.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
 
         rand = new Random();
         instances = new ArrayList<>();
